@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 615501dbe4f3fe94fbf4b564abb10237, type: 3}
+  m_Name: ModConfig
+  m_EditorClassIdentifier: 
+  id: antistress
+  title: Antistress
+  author: TasThing
+  description: "-\u0317\u0300 (\u2180\u03C9\u2180) -\u0316\u0301\n\nModule idea and
+    implementation by TasThing."
+  version: 1.0
+  outputFolder: build
+  previewImage: {fileID: 2800000, guid: 34693c078a7be6f4f93cb533f1f2ce92, type: 3}
