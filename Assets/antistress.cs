@@ -37,7 +37,7 @@ public class antistress : MonoBehaviour
     private int currentColor;
     private bool inGame;
     private static readonly string[] labels1 = new string[] { "Solve the module", "Switch & buttons", "Turnable dials", "Sorting colors" };
-    private static readonly string[] labels2 = new string[] { "Balloon", "Pixel painting", "Under construction!", "Under construction!" };
+    private static readonly string[] labels2 = new string[] { "Balloon", "Pixel painting", "Library", "Under construction!" };
 
     private bool switchUp;
     private bool switchAnimating;
@@ -145,10 +145,7 @@ public class antistress : MonoBehaviour
             foreach (KMSelectable b in mainButtons)
                 b.gameObject.SetActive(false);
             minigames[Array.IndexOf(labels1.Concat(labels2).ToArray(), label) - 1].SetActive(true);
-            if (minigames[5].activeSelf)
-                colorButton.GetComponentInChildren<TextMesh>().text = "x";
-            else
-                colorButton.gameObject.SetActive(false);
+            colorButton.gameObject.SetActive(false);
         }
     }
 
@@ -326,7 +323,7 @@ public class antistress : MonoBehaviour
         audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, button.transform);
         var ix = Array.IndexOf(paintingColorButtons, button);
         currentPaintingColor = paintingColors[ix];
-        paintingLed.material.color = paintingColors[ix];    
+        paintingLed.material.color = paintingColors[ix];
     }
 
     private void UpdateColors()

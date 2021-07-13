@@ -1,0 +1,201 @@
+fileFormatVersion: 2
+guid: b007e5da3aa1b544e98b0170e284cdf3
+ModelImporter:
+  serializedVersion: 22
+  fileIDToRecycleName:
+    100000: bush_acdc
+    100002: //RootNode
+    100004: bush_back_case_part
+    100006: bush_back_part
+    100008: bush_black_space
+    100010: bush_buttons
+    100012: bush_case
+    100014: bush_case_frame
+    100016: bush_display_white_frame
+    100018: bush_front_camera
+    100020: bush_glass
+    100022: bush_grill
+    100024: bush_hdmi
+    100026: bush_logo
+    100028: bush_minijack
+    100030: bush_rear_cam
+    100032: bush_screen
+    100034: bush_screen_frame
+    100036: bush_tf_card
+    100038: bush_usb
+    400000: bush_acdc
+    400002: //RootNode
+    400004: bush_back_case_part
+    400006: bush_back_part
+    400008: bush_black_space
+    400010: bush_buttons
+    400012: bush_case
+    400014: bush_case_frame
+    400016: bush_display_white_frame
+    400018: bush_front_camera
+    400020: bush_glass
+    400022: bush_grill
+    400024: bush_hdmi
+    400026: bush_logo
+    400028: bush_minijack
+    400030: bush_rear_cam
+    400032: bush_screen
+    400034: bush_screen_frame
+    400036: bush_tf_card
+    400038: bush_usb
+    2100000: bush_acdcMat
+    2100002: bush_back_case_partMat
+    2100004: bush_back_partMat
+    2100006: bush_black_spaceMat
+    2100008: bush_buttonsMat
+    2100010: bush_caseMat
+    2100012: bush_case_frameMat
+    2100014: bush_display_white_frameMat
+    2100016: bush_front_cameraMat
+    2100018: bush_glassMat
+    2100020: bush_grillMat
+    2100022: bush_hdmiMat
+    2100024: bush_logoMat
+    2100026: bush_minijackMat
+    2100028: bush_rear_camMat
+    2100030: bush_screenMat
+    2100032: bush_screen_frameMat
+    2100034: bush_tf_cardMat
+    2100036: bush_usbMat
+    2300000: bush_acdc
+    2300002: bush_back_case_part
+    2300004: bush_back_part
+    2300006: bush_black_space
+    2300008: bush_buttons
+    2300010: bush_case
+    2300012: bush_case_frame
+    2300014: bush_display_white_frame
+    2300016: bush_front_camera
+    2300018: bush_glass
+    2300020: bush_grill
+    2300022: bush_hdmi
+    2300024: bush_logo
+    2300026: bush_minijack
+    2300028: bush_rear_cam
+    2300030: bush_screen
+    2300032: bush_screen_frame
+    2300034: bush_tf_card
+    2300036: bush_usb
+    3300000: bush_acdc
+    3300002: bush_back_case_part
+    3300004: bush_back_part
+    3300006: bush_black_space
+    3300008: bush_buttons
+    3300010: bush_case
+    3300012: bush_case_frame
+    3300014: bush_display_white_frame
+    3300016: bush_front_camera
+    3300018: bush_glass
+    3300020: bush_grill
+    3300022: bush_hdmi
+    3300024: bush_logo
+    3300026: bush_minijack
+    3300028: bush_rear_cam
+    3300030: bush_screen
+    3300032: bush_screen_frame
+    3300034: bush_tf_card
+    3300036: bush_usb
+    4300000: bush_acdc
+    4300002: bush_back_case_part
+    4300004: bush_back_part
+    4300006: bush_black_space
+    4300008: bush_buttons
+    4300010: bush_case
+    4300012: bush_case_frame
+    4300014: bush_display_white_frame
+    4300016: bush_front_camera
+    4300018: bush_glass
+    4300020: bush_grill
+    4300022: bush_hdmi
+    4300024: bush_logo
+    4300026: bush_minijack
+    4300028: bush_rear_cam
+    4300030: bush_screen
+    4300032: bush_screen_frame
+    4300034: bush_tf_card
+    4300036: bush_usb
+  externalObjects: {}
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 0
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
