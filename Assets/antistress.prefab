@@ -17112,7 +17112,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1770807609743798}
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 33.6, y: 81.9, z: 14}
+  m_LocalPosition: {x: 33.6, y: 77.5, z: 14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 4645085953183182}
@@ -63043,6 +63043,8 @@ MonoBehaviour:
   - {r: 1, g: 1, b: 1, a: 1}
   - {r: 0.6691177, g: 0.65927774, b: 0.65927774, a: 1}
   - {r: 0, g: 0, b: 0, a: 0}
+  readingTextMesh: {fileID: 102955726563767244}
+  readingTextRenderer: {fileID: 23656794549339982}
 --- !u!114 &114530280335663020
 MonoBehaviour:
   m_ObjectHideFlags: 1

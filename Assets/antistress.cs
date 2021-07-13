@@ -2,9 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
+using System.Text;
+using Antistress;
 using KModkit;
-using System.Text.RegularExpressions;
+using UnityEngine;
 using rnd = UnityEngine.Random;
 
 public class antistress : MonoBehaviour
@@ -31,6 +32,9 @@ public class antistress : MonoBehaviour
     public Renderer paintingLed;
     public KMSelectable[] paintingColorButtons;
     public Color[] paintingColors;
+
+    public TextMesh readingTextMesh;
+    public MeshRenderer readingTextRenderer;
 
     private int startingColor;
     private int solution;
@@ -107,6 +111,8 @@ public class antistress : MonoBehaviour
         Debug.LogFormat("[Antistress #{0}] Last digit of the serial number: {1}", moduleId, sn);
         Debug.LogFormat("[Antistress #{0}] Solution digit: {1}", moduleId, solution);
         UpdateColors();
+
+        SetWordWrappedText(mobyDick.book[0]);
     }
 
     private void PressButton(KMSelectable button)
@@ -324,6 +330,78 @@ public class antistress : MonoBehaviour
         var ix = Array.IndexOf(paintingColorButtons, button);
         currentPaintingColor = paintingColors[ix];
         paintingLed.material.color = paintingColors[ix];
+    }
+
+    private void SetWordWrappedText(string text)
+    {
+        var acceptableWidth = 80d;
+        var desiredHeight = 150d;
+
+        var low = 1;
+        var high = 1024;
+        var wrappeds = new Dictionary<int, string>();
+
+        var prevPosition = readingTextMesh.transform.localPosition;
+        var prevRotation = readingTextMesh.transform.localRotation;
+        var prevScale = readingTextMesh.transform.localScale;
+        var parent = readingTextMesh.transform.parent;
+
+        readingTextMesh.transform.SetParent(null, false);
+        readingTextMesh.transform.localPosition = new Vector3(0, 0, 0);
+        readingTextMesh.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        readingTextMesh.transform.localScale = new Vector3(1, 1, 1);
+
+        while (high - low > 1)
+        {
+            var mid = (low + high) / 2;
+            readingTextMesh.fontSize = mid;
+            readingTextMesh.text = "\u00a0";
+            var widthOfASpace = readingTextRenderer.bounds.size.x;
+
+            var wrappedSB = new StringBuilder();
+            var first = true;
+            foreach (var line in Ut.WordWrap(
+                text,
+                line => acceptableWidth,
+                widthOfASpace,
+                str =>
+                {
+                    readingTextMesh.text = str;
+                    return readingTextRenderer.bounds.size.x;
+                },
+                allowBreakingWordsApart: false
+            ))
+            {
+                if (line == null)
+                {
+                    // There was a word that was too long to fit into a line.
+                    high = mid;
+                    wrappedSB = null;
+                    break;
+                }
+                if (!first)
+                    wrappedSB.Append('\n');
+                first = false;
+                wrappedSB.Append(line);
+            }
+
+            if (wrappedSB != null)
+            {
+                var wrapped = wrappedSB.ToString();
+                wrappeds[mid] = wrapped;
+                readingTextMesh.text = wrapped;
+                if (readingTextRenderer.bounds.size.z > desiredHeight)
+                    high = mid;
+                else
+                    low = mid;
+            }
+        }
+        readingTextMesh.fontSize = low;
+        readingTextMesh.text = wrappeds[low];
+        readingTextMesh.transform.SetParent(parent, false);
+        readingTextMesh.transform.localPosition = prevPosition;
+        readingTextMesh.transform.localRotation = prevRotation;
+        readingTextMesh.transform.localScale = prevScale;
     }
 
     private void UpdateColors()
