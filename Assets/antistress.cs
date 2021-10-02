@@ -30,11 +30,16 @@ public class antistress : MonoBehaviour
     public KMSelectable[] pixels;
     private Renderer[] pixelRenders;
     public Renderer paintingLed;
+    public KMSelectable clearButton;
     public KMSelectable[] paintingColorButtons;
     public Color[] paintingColors;
-
     public TextMesh readingTextMesh;
     public MeshRenderer readingTextRenderer;
+    public Renderer readingScreen;
+    public Texture[] bookCovers;
+    public Color pageColor;
+    public KMSelectable bookButton;
+    public KMSelectable[] bookCycleButtons;
 
     private int startingColor;
     private int solution;
@@ -55,7 +60,12 @@ public class antistress : MonoBehaviour
     private int balloonStage;
     private bool dragging;
     private Color currentPaintingColor;
+    private int selectedBook;
+    private int pageNumber;
+    private bool bookSelected;
+    private string[] currentBook = null;
 
+    private int storedTime;
     private static int moduleIdCounter = 1;
     private int moduleId;
     private bool moduleSolved;
@@ -66,7 +76,8 @@ public class antistress : MonoBehaviour
         foreach (KMSelectable button in mainButtons)
             button.OnInteract += delegate () { PressButton(button); return false; };
         controlButton.OnInteract += delegate () { PressControlButton(); return false; };
-        colorButton.OnInteract += delegate () { PressColorButton(); return false; };
+        colorButton.OnInteract += delegate () { storedTime = (int)bomb.GetTime(); return false; };
+        colorButton.OnInteractEnded += delegate () { ReleaseColorButton(); };
         pixelRenders = pixels.Select(x => x.GetComponent<Renderer>()).ToArray();
 
         foreach (KMSelectable button in squishButtons)
@@ -84,11 +95,15 @@ public class antistress : MonoBehaviour
             pixel.OnInteractEnded += delegate () { dragging = false; };
             pixel.OnHighlight += delegate () { if (dragging) { PaintPixel(pixel); } };
         }
+        clearButton.OnInteract += delegate () { PressClearButton(); return false; };
         foreach (KMSelectable button in paintingColorButtons)
         {
             button.OnInteract += delegate () { PressPaintingButton(button); return false; };
             button.GetComponent<Renderer>().material.color = paintingColors[Array.IndexOf(paintingColorButtons, button)];
         }
+        bookButton.OnInteract += delegate () { PressBookButton(); return false; };
+        foreach (KMSelectable button in bookCycleButtons)
+            button.OnInteract += delegate () { PressBookButton(button); return false; };
     }
 
     private void Start()
@@ -101,6 +116,9 @@ public class antistress : MonoBehaviour
             pixel.material.color = Color.white;
         StartCoroutine(StartStickAnimations());
         ScrambleSticks();
+        readingTextMesh.text = "";
+        readingScreen.material.color = Color.white;
+        readingScreen.material.mainTexture = bookCovers[0];
 
         startingColor = rnd.Range(0, 7);
         currentColor = startingColor;
@@ -111,8 +129,6 @@ public class antistress : MonoBehaviour
         Debug.LogFormat("[Antistress #{0}] Last digit of the serial number: {1}", moduleId, sn);
         Debug.LogFormat("[Antistress #{0}] Solution digit: {1}", moduleId, solution);
         UpdateColors();
-
-        SetWordWrappedText(mobyDick.book[0]);
     }
 
     private void PressButton(KMSelectable button)
@@ -177,7 +193,18 @@ public class antistress : MonoBehaviour
         }
     }
 
-    private void PressColorButton()
+    private void ReleaseColorButton()
+    {
+        if (storedTime == (int)bomb.GetTime())
+            ToggleColors();
+        else
+        {
+            currentColor = startingColor;
+            UpdateColors();
+        }
+    }
+
+    private void ToggleColors()
     {
         colorButton.AddInteractionPunch(.25f);
         audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, colorButton.transform);
@@ -258,7 +285,7 @@ public class antistress : MonoBehaviour
             stick.GetComponent<Renderer>().material.color = selectedColor;
             audio.PlaySoundAtTransform("splat", stick.transform);
             selectedStick = null;
-            if (stickOrder.SequenceEqual(new int[] { 5, 4, 3, 2, 1, 0 }))
+            if (stickOrder.SequenceEqual(new int[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new int[] { 0, 1, 2, 3, 4, 5 }))
                 StartCoroutine(ResetSticks());
         }
     }
@@ -282,6 +309,8 @@ public class antistress : MonoBehaviour
     private void ScrambleSticks()
     {
         stickOrder = Enumerable.Range(0, 6).ToList().Shuffle().ToArray();
+        while (stickOrder.SequenceEqual(new int[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new int[] { 0, 1, 2, 3, 4, 5 }))
+            stickOrder = Enumerable.Range(0, 6).ToList().Shuffle().ToArray();
         var colors = new Color[6];
         float H, S, V;
         Color.RGBToHSV(stickStartingColors.PickRandom(), out H, out S, out V);
@@ -330,6 +359,103 @@ public class antistress : MonoBehaviour
         var ix = Array.IndexOf(paintingColorButtons, button);
         currentPaintingColor = paintingColors[ix];
         paintingLed.material.color = paintingColors[ix];
+    }
+
+    private void PressClearButton()
+    {
+        clearButton.AddInteractionPunch(.25f);
+        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, clearButton.transform);
+        var prevColor = currentPaintingColor;
+        currentPaintingColor = paintingColors[15];
+        foreach (KMSelectable pixel in pixels)
+            PaintPixel(pixel);
+        currentPaintingColor = prevColor;
+    }
+
+    private void PressBookButton()
+    {
+        bookButton.AddInteractionPunch(.25f);
+        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, bookButton.transform);
+        if (!bookSelected)
+        {
+            bookButton.GetComponentInChildren<TextMesh>().text = "Exit";
+            bookSelected = true;
+            switch (selectedBook)
+            {
+                case 0:
+                    currentBook = nineteenEightyFour.book.ToArray();
+                    break;
+                case 1:
+                    currentBook = christmasCarol.book.ToArray();
+                    break;
+                case 2:
+                    currentBook = callOfCthulhu.book.ToArray();
+                    break;
+                case 3:
+                    currentBook = diaryOfAWimpyKid.book.ToArray();
+                    break;
+                case 4:
+                    currentBook = fahrenheit451.book.ToArray();
+                    break;
+                case 5:
+                    currentBook = mobyDick.book.ToArray();
+                    break;
+                case 6:
+                    currentBook = bells.book.ToArray();
+                    break;
+                case 7:
+                    currentBook = caskOfAmontillado.book.ToArray();
+                    break;
+                case 8:
+                    currentBook = onesWhoWalkAwayFromOmelas.book.ToArray();
+                    break;
+                case 9:
+                    currentBook = raven.book.ToArray();
+                    break;
+            }
+            readingScreen.material.color = pageColor;
+            readingScreen.material.mainTexture = null;
+            SetWordWrappedText(currentBook[0]);
+        }
+        else
+        {
+            bookButton.GetComponentInChildren<TextMesh>().text = "Select";
+            bookSelected = false;
+            pageNumber = 0;
+            currentBook = null;
+            readingScreen.material.color = Color.white;
+            readingScreen.material.mainTexture = bookCovers[selectedBook];
+            readingTextMesh.text = "";
+        }
+    }
+
+    private void PressBookButton(KMSelectable button)
+    {
+        button.AddInteractionPunch(.25f);
+        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, button.transform);
+        var ix = Array.IndexOf(bookCycleButtons, button);
+        var offsets = new int[] { 1, -1 };
+        if (!bookSelected)
+        {
+            selectedBook = (selectedBook + 10 + offsets[ix]) % 10;
+            readingScreen.material.mainTexture = bookCovers[selectedBook];
+        }
+        else
+        {
+            if (ix == 0)
+            {
+                if (pageNumber == currentBook.Length - 1)
+                    return;
+                pageNumber++;
+            }
+            else
+            {
+                if (pageNumber == 0)
+                    return;
+                pageNumber--;
+            }
+            SetWordWrappedText(currentBook[pageNumber]);
+        }
     }
 
     private void SetWordWrappedText(string text)
@@ -418,5 +544,78 @@ public class antistress : MonoBehaviour
             balloonStage--;
         var balloonScale = Mathf.Lerp(.02f, .1f, balloonStage / 60f);
         balloon.transform.localScale = new Vector3(balloonScale, 0.0006350432f, balloonScale);
+    }
+
+    // Twitch Plays
+#pragma warning disable 414
+    private readonly string TwitchHelpMessage = "!{0} cycle <#> [Press the C button # times.] !{0} submit <#> [Press \"Solve the module\" when the last digit of the timer is #. !{0} cycle reset [Resets the color to the initial color.]";
+#pragma warning restore 414
+
+    private IEnumerator ProcessTwitchCommand(string command)
+    {
+        command = command.ToLowerInvariant().Trim();
+        var commandArray = command.Split(' ').ToArray();
+        if (commandArray.Length != 2)
+            yield break;
+        if (commandArray[0] == "cycle")
+        {
+            if (commandArray[1] == "reset")
+            {
+                yield return null;
+                colorButton.OnInteract();
+                yield return new WaitUntil(() => (int)bomb.GetTime() != storedTime);
+                colorButton.OnInteractEnded();
+            }
+            else
+            {
+                var number = 0;
+                var success = int.TryParse(commandArray[1], out number);
+                if (success)
+                {
+                    yield return null;
+                    for (int i = 0; i < number; i++)
+                    {
+                        colorButton.OnInteract();
+                        yield return null;
+                        colorButton.OnInteractEnded();
+                        yield return new WaitForSeconds(.75f);
+                    }
+                }
+                else
+                    yield break;
+            }
+        }
+        else if (commandArray[0] == "submit")
+        {
+            var digits = new string[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+            if (!digits.Contains(commandArray[1]))
+                yield break;
+            else
+            {
+                yield return null;
+                yield return new WaitUntil(() => ((int)bomb.GetTime()) % 10 == Array.IndexOf(digits, commandArray[1]));
+                mainButtons[0].OnInteract();
+            }
+        }
+        else
+            yield break;
+    }
+
+    private IEnumerator TwitchHandleForcedSolve()
+    {
+        if (inGame)
+        {
+            yield return null;
+            controlButton.OnInteract();
+        }
+        if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+        {
+            yield return null;
+            controlButton.OnInteract();
+        }
+        while (((int)bomb.GetTime()) % 10 != solution)
+            yield return true;
+        yield return null;
+        mainButtons[0].OnInteract();
     }
 }
