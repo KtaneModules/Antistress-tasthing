@@ -195,6 +195,8 @@ public class antistress : MonoBehaviour
 
     private void ReleaseColorButton()
     {
+        colorButton.AddInteractionPunch(.25f);
+        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, colorButton.transform);
         if (storedTime == (int)bomb.GetTime())
             ToggleColors();
         else
@@ -206,8 +208,6 @@ public class antistress : MonoBehaviour
 
     private void ToggleColors()
     {
-        colorButton.AddInteractionPunch(.25f);
-        audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, colorButton.transform);
         currentColor = (currentColor + 1) % 7;
         UpdateColors();
     }
