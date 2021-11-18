@@ -49,7 +49,6 @@ public class antistress : MonoBehaviour
     private static readonly string[] labels2 = new string[] { "Balloon", "Pixel painting", "Library", "Under construction!" };
 
     private bool switchUp;
-    private bool switchAnimating;
     private int[] dialPositions = new int[4];
     private static readonly int[] dialBounds = new int[] { 4, 8, 16, 32 };
     private int[] stickOrder = new int[6];
@@ -65,6 +64,7 @@ public class antistress : MonoBehaviour
     private bool bookSelected;
     private string[] currentBook = null;
 
+    private Coroutine switchMovement;
     private int storedTime;
     private static int moduleIdCounter = 1;
     private int moduleId;
@@ -220,12 +220,15 @@ public class antistress : MonoBehaviour
 
     private void FlipSwitch()
     {
-        if (switchAnimating)
-            return;
         audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, bigSwitch.transform);
         bigSwitch.AddInteractionPunch(.25f);
         switchUp = !switchUp;
-        StartCoroutine(MoveSwitch());
+        if (switchMovement != null)
+        {
+            StopCoroutine(switchMovement);
+            switchMovement = null;
+        }
+        switchMovement = StartCoroutine(MoveSwitch());
     }
 
     private void PressDial(KMSelectable dial)
@@ -241,18 +244,17 @@ public class antistress : MonoBehaviour
     private IEnumerator MoveSwitch()
     {
         var elapsed = 0f;
-        var duration = .3f;
-        var startAngle = switchUp ? 55f : -55f;
-        var endAngle = startAngle * -1f;
-        switchAnimating = true;
+        var duration = .25f;
+        var startAngle = bigSwitch.transform.localEulerAngles.x;
+        var endAngle = switchUp ? 55f : -55f;
         while (elapsed < duration)
         {
-            bigSwitch.transform.localEulerAngles = new Vector3(Easing.OutSine(elapsed, startAngle, endAngle, duration), 0f, 0f);
+            //  bigSwitch.transform.localEulerAngles = new Vector3(Easing.OutSine(elapsed, startAngle, endAngle, duration), 0f, 0f);
+            bigSwitch.transform.localRotation = Quaternion.Slerp(Quaternion.Euler(startAngle, 0f, 0f), Quaternion.Euler(endAngle, 0f, 0f), elapsed / duration);
             yield return null;
             elapsed += Time.deltaTime;
         }
         bigSwitch.transform.localEulerAngles = new Vector3(endAngle, 0f, 0f);
-        switchAnimating = false;
     }
 
     private IEnumerator StartStickAnimations()

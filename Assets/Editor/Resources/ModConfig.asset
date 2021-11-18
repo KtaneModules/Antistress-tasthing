@@ -17,6 +17,6 @@ MonoBehaviour:
   description: "-\u0317\u0300 (\u2180\u03C9\u2180) -\u0316\u0301\r\n\r\nModule idea
     and implementation by TasThing.\r\n\r\nManual HTML: https://ktane.timwi.de/HTML/Antistress.html\r\nManual
     PDF: https://ktane.timwi.de/PDF/Antistress.pdf"
-  version: 1.1.1
+  version: 1.1.2
   outputFolder: build
   previewImage: {fileID: 2800000, guid: 34693c078a7be6f4f93cb533f1f2ce92, type: 3}
