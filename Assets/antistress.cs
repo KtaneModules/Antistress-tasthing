@@ -19,6 +19,7 @@ public class antistress : MonoBehaviour
     public KMSelectable colorButton;
     public GameObject[] minigames;
     public Color[] buttonColors;
+    public TextMesh colorblindText;
 
     public KMSelectable[] squishButtons;
     public Color[] squishButtonColors;
@@ -45,12 +46,13 @@ public class antistress : MonoBehaviour
     private int solution;
     private int currentColor;
     private bool inGame;
-    private static readonly string[] labels1 = new string[] { "Solve the module", "Switch & buttons", "Turnable dials", "Sorting colors" };
-    private static readonly string[] labels2 = new string[] { "Balloon", "Pixel painting", "Library", "Under construction!" };
+    private static readonly string[] labels1 = new[] { "Solve the module", "Switch & buttons", "Turnable dials", "Sorting colors" };
+    private static readonly string[] labels2 = new[] { "Balloon", "Pixel painting", "Library", "Under construction!" };
+    private static readonly string[] colorNames = new[] { "green", "dark blue", "pink", "orange", "yellow", "magenta", "light blue" };
 
     private bool switchUp;
     private int[] dialPositions = new int[4];
-    private static readonly int[] dialBounds = new int[] { 4, 8, 16, 32 };
+    private static readonly int[] dialBounds = new[] { 4, 8, 16, 32 };
     private int[] stickOrder = new int[6];
     private int? selectedStick = null;
     private bool stickAnimating;
@@ -65,6 +67,7 @@ public class antistress : MonoBehaviour
     private string[] currentBook = null;
 
     private Coroutine switchMovement;
+    private Coroutine[] dialMovements = new Coroutine[4];
     private int storedTime;
     private static int moduleIdCounter = 1;
     private int moduleId;
@@ -119,6 +122,7 @@ public class antistress : MonoBehaviour
         readingTextMesh.text = "";
         readingScreen.material.color = Color.white;
         readingScreen.material.mainTexture = bookCovers[0];
+        colorblindText.gameObject.SetActive(GetComponent<KMColorblindMode>().ColorblindModeActive);
 
         startingColor = rnd.Range(0, 7);
         currentColor = startingColor;
@@ -237,8 +241,27 @@ public class antistress : MonoBehaviour
         audio.PlaySoundAtTransform("dial click", dial.transform);
         var ix = Array.IndexOf(dials, dial);
         dialPositions[ix] = (dialPositions[ix] + 1) % dialBounds[ix];
-        var rotation = 360f / dialBounds[ix] * dialPositions[ix];
-        dial.transform.localEulerAngles = new Vector3(0f, rotation, 0f);
+        if (dialMovements[ix] != null)
+        {
+            StopCoroutine(dialMovements[ix]);
+            dialMovements[ix] = null;
+        }
+        var start = dial.transform.localRotation;
+        var end = Quaternion.Euler(new Vector3(0f, 360f / dialBounds[ix] * dialPositions[ix], 0f));
+        dialMovements[ix] = StartCoroutine(MoveDial(dialBounds[ix], start, end, dial.transform));
+    }
+
+    private IEnumerator MoveDial(int bound, Quaternion start, Quaternion end, Transform dial)
+    {
+        var elapsed = 0f;
+        var duration = 1f / bound;
+        while (elapsed < duration)
+        {
+            dial.localRotation = Quaternion.Slerp(start, end, elapsed / duration);
+            yield return null;
+            elapsed += Time.deltaTime;
+        }
+        dial.localRotation = end;
     }
 
     private IEnumerator MoveSwitch()
@@ -287,7 +310,7 @@ public class antistress : MonoBehaviour
             stick.GetComponent<Renderer>().material.color = selectedColor;
             audio.PlaySoundAtTransform("splat", stick.transform);
             selectedStick = null;
-            if (stickOrder.SequenceEqual(new int[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new int[] { 0, 1, 2, 3, 4, 5 }))
+            if (stickOrder.SequenceEqual(new[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new[] { 0, 1, 2, 3, 4, 5 }))
                 StartCoroutine(ResetSticks());
         }
     }
@@ -311,7 +334,7 @@ public class antistress : MonoBehaviour
     private void ScrambleSticks()
     {
         stickOrder = Enumerable.Range(0, 6).ToList().Shuffle().ToArray();
-        while (stickOrder.SequenceEqual(new int[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new int[] { 0, 1, 2, 3, 4, 5 }))
+        while (stickOrder.SequenceEqual(new[] { 5, 4, 3, 2, 1, 0 }) || stickOrder.SequenceEqual(new[] { 0, 1, 2, 3, 4, 5 }))
             stickOrder = Enumerable.Range(0, 6).ToList().Shuffle().ToArray();
         var colors = new Color[6];
         float H, S, V;
@@ -436,7 +459,7 @@ public class antistress : MonoBehaviour
         button.AddInteractionPunch(.25f);
         audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, button.transform);
         var ix = Array.IndexOf(bookCycleButtons, button);
-        var offsets = new int[] { 1, -1 };
+        var offsets = new[] { 1, -1 };
         if (!bookSelected)
         {
             selectedBook = (selectedBook + 10 + offsets[ix]) % 10;
@@ -536,6 +559,7 @@ public class antistress : MonoBehaviour
     {
         foreach (Renderer button in mainButtons.Select(x => x.GetComponent<Renderer>()))
             button.material.color = buttonColors[currentColor];
+        colorblindText.text = colorNames[currentColor];
     }
 
     private void Update()
@@ -589,7 +613,7 @@ public class antistress : MonoBehaviour
         }
         else if (commandArray[0] == "submit")
         {
-            var digits = new string[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+            var digits = new[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
             if (!digits.Contains(commandArray[1]))
                 yield break;
             else
