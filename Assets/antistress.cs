@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Antistress;
 using KModkit;
 using UnityEngine;
@@ -50,7 +51,7 @@ public class antistress : MonoBehaviour
     private static readonly string[] labels2 = new[] { "Balloon", "Pixel painting", "Library", "Under construction!" };
     private static readonly string[] colorNames = new[] { "green", "dark blue", "pink", "orange", "yellow", "magenta", "light blue" };
 
-    private bool switchUp;
+    private bool switchUp = true;
     private int[] dialPositions = new int[4];
     private static readonly int[] dialBounds = new[] { 4, 8, 16, 32 };
     private int[] stickOrder = new int[6];
@@ -72,6 +73,7 @@ public class antistress : MonoBehaviour
     private static int moduleIdCounter = 1;
     private int moduleId;
     private bool moduleSolved;
+    private bool colorblindMode;
 
     private void Awake()
     {
@@ -122,7 +124,8 @@ public class antistress : MonoBehaviour
         readingTextMesh.text = "";
         readingScreen.material.color = Color.white;
         readingScreen.material.mainTexture = bookCovers[0];
-        colorblindText.gameObject.SetActive(GetComponent<KMColorblindMode>().ColorblindModeActive);
+        colorblindMode = GetComponent<KMColorblindMode>().ColorblindModeActive;
+        SetColorblindModeText(colorblindMode);
 
         startingColor = rnd.Range(0, 7);
         currentColor = startingColor;
@@ -133,6 +136,12 @@ public class antistress : MonoBehaviour
         Debug.LogFormat("[Antistress #{0}] Last digit of the serial number: {1}", moduleId, sn);
         Debug.LogFormat("[Antistress #{0}] Solution digit: {1}", moduleId, solution);
         UpdateColors();
+        _tpCode = GetModuleCode();
+    }
+
+    private void SetColorblindModeText(bool mode)
+    {
+        colorblindText.gameObject.SetActive(mode);
     }
 
     private void PressButton(KMSelectable button)
@@ -168,6 +177,7 @@ public class antistress : MonoBehaviour
         else
         {
             inGame = true;
+            colorblindText.gameObject.SetActive(false);
             foreach (KMSelectable b in mainButtons)
                 b.gameObject.SetActive(false);
             minigames[Array.IndexOf(labels1.Concat(labels2).ToArray(), label) - 1].SetActive(true);
@@ -182,6 +192,7 @@ public class antistress : MonoBehaviour
         if (inGame)
         {
             inGame = false;
+            SetColorblindModeText(colorblindMode);
             foreach (KMSelectable button in mainButtons)
                 button.gameObject.SetActive(true);
             foreach (GameObject game in minigames)
@@ -572,76 +583,568 @@ public class antistress : MonoBehaviour
         balloon.transform.localScale = new Vector3(balloonScale, 0.0006350432f, balloonScale);
     }
 
-    // Twitch Plays
+    // Twitch Plays, written by Quinn Wuest
 #pragma warning disable 414
-    private readonly string TwitchHelpMessage = "!{0} cycle <#> [Press the C button # times.] !{0} submit <#> [Press \"Solve the module\" when the last digit of the timer is #. !{0} cycle reset [Resets the color to the initial color.]";
+    private readonly string TwitchHelpMessage = "!{0} cycle <#> [Press the C button # times.] | !{0} submit <#> [Press \"Solve the module\" when the last digit of the timer is #. | !{0} cycle reset [Resets the color to the initial color.]\n!{0} games [List all the different games to play] | !{0} game help [Give the help message for the current minigame.] !{0} return [Return to the main screen";
 #pragma warning restore 414
+
+    private string _tpCode;
+
+    private int GetCurrentGame()
+    {
+        int currentGame = -1;
+        for (int i = 0; i < minigames.Length; i++)
+            if (minigames[i].activeInHierarchy)
+                currentGame = i;
+        return currentGame;
+    }
 
     private IEnumerator ProcessTwitchCommand(string command)
     {
-        command = command.ToLowerInvariant().Trim();
-        var commandArray = command.Split(' ').ToArray();
-        if (commandArray.Length != 2)
-            yield break;
-        if (commandArray[0] == "cycle")
+        // Initial declaration
+        Match m;
+        command = command.Trim().ToLowerInvariant();
+
+        // Colorblind
+        m = Regex.Match(command, @"^\s*(colou?rblind|cb)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
         {
-            if (commandArray[1] == "reset")
+            yield return null;
+            colorblindMode = !colorblindMode;
+            if (!inGame)
+                SetColorblindModeText(colorblindMode);
+            yield break;
+        }
+
+        // Submit an answer
+        m = Regex.Match(command, @"^\s*(?:submit\s+)(?<d>\d)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
             {
-                yield return null;
-                colorButton.OnInteract();
-                yield return new WaitUntil(() => (int)bomb.GetTime() != storedTime);
-                colorButton.OnInteractEnded();
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
             }
-            else
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
             {
-                var number = 0;
-                var success = int.TryParse(commandArray[1], out number);
-                if (success)
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            int num = int.Parse(m.Groups["d"].Value);
+            while ((int)bomb.GetTime() % 10 != num)
+                yield return null;
+            mainButtons[0].OnInteract();
+            yield break;
+        }
+
+        // Cycle colors x times
+        m = Regex.Match(command, @"^\s*(?:cycle\s+)(?<d>\d+)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            int num;
+            if (!int.TryParse(m.Groups["d"].Value, out num) || num < 0)
+                yield break;
+            yield return null;
+            num = num % 7 == 0 ? 7 : (num % 7);
+            if (inGame)
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            for (int i = 0; i < num; i++)
+            {
+                colorButton.OnInteract();
+                yield return null;
+                colorButton.OnInteractEnded();
+                yield return new WaitForSeconds(0.75f);
+                yield return "trycancel";
+            }
+            yield break;
+        }
+
+        // Cycle reset
+        m = Regex.Match(command, @"^\s*cycle\s+reset\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            colorButton.OnInteract();
+            yield return new WaitUntil(() => (int)bomb.GetTime() != storedTime);
+            colorButton.OnInteractEnded();
+        }
+
+        // Return
+        m = Regex.Match(command, @"^\s*return\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
+        // Game help
+        int currentGame = GetCurrentGame();
+        m = Regex.Match(command, @"^\s*game\s+help\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame == -1)
+            {
+                yield return "sendtochaterror You are not in a current game!";
+                yield break;
+            }
+            yield return null;
+            if (currentGame == 0) // Switch and Buttons
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " press red/yellow/green/blue [Press the button of this color.] | !" + _tpCode + " flip switch [Flip the switch.]";
+                yield break;
+            }
+            if (currentGame == 1) // Dials
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " turn top/left/right/down 4 [Turn the dial this many times.]";
+                yield break;
+            }
+            if (currentGame == 2) // Sorting colors
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " swap 1 3 [Swap keys 1 and 3.] | Commands can be chained using commas.";
+                yield break;
+            }
+            if (currentGame == 3) // Balloon
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " inflate for 1.3 [Inflate the balloon for 1.3 seconds.] | The balloon must be inflated for more than 0 seconds and less than 5 seconds.";
+                yield break;
+            }
+            if (currentGame == 4) // Pixel painting
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " pick color b4 [Pick the color at position B4.] | !" + _tpCode + " paint a5 dddrr [Paint at coordinate A5, then draw Down, Down, Down, Right, Right.] | !" + _tpCode + " clear [Clear the painting.]";
+                yield break;
+            }
+            if (currentGame == 5) // Library
+            {
+                yield return "sendtochat Antistress: !" + _tpCode + " prev/next [Go to the previous/next book.] | !" + _tpCode + " select [Select the current book.] | !" + _tpCode + " select The Cask of Amontillado [Select the book with that title.] | Book titles are: 1984, A Christmas Carol, Call of Cthulhu, Diary of a Wimpy Kid, Fahrenheit 451, Moby Dick, The Bells, The Cask of Amontillado, The Ones who Walk Away from Omelas, The Raven";
+                yield break;
+            }
+        }
+        m = Regex.Match(command, @"^\s*games\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            yield return "sendtochat Antistress: List of games: \"Switch and buttons\", \"Turnable dials\", \"Sorting colors\", \"Balloon\", \"Pixel painting\", \"Library\"";
+            yield break;
+        }
+        // Switch and buttons
+        m = Regex.Match(command, @"^\s*switch\s+and\s+buttons\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                if (currentGame == 0)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[1].OnInteract();
+        }
+        m = Regex.Match(command, @"^\s*press\s+(?<color>red|blue|green|yellow)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 0)
+            {
+                yield return "sendtochaterror You are not in the \"Switch & buttons\" minigame!";
+                yield break;
+            }
+            yield return null;
+            var color = m.Groups["color"].Value;
+            var colors = new string[] { "red", "blue", "green", "yellow" };
+            int ix = Array.IndexOf(colors, color);
+            squishButtons[ix].OnInteract();
+            yield break;
+        }
+        m = Regex.Match(command, @"^\s*flip\s+switch\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 0)
+            {
+                yield return "sendtochaterror You are not in the \"Switch & buttons\" minigame!";
+                yield break;
+            }
+            yield return null;
+            bigSwitch.OnInteract();
+            yield break;
+        }
+
+        // Turnable dials
+        m = Regex.Match(command, @"^\s*turnable\s+dials\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                if (currentGame == 1)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[2].OnInteract();
+        }
+        m = Regex.Match(command, @"^\s*turn\s+(?<dial>right|top|bottom|left)\s+(?<d>\d+)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 1)
+            {
+                yield return "sendtochaterror You are not in the \"Turnable dials\" minigame!";
+                yield break;
+            }
+            int num;
+            if (!int.TryParse(m.Groups["d"].Value, out num) || num < 0)
+                yield break;
+            yield return null;
+            var dir = m.Groups["dial"].Value;
+            var dirs = new string[] { "right", "top", "bottom", "left" };
+            int ix = Array.IndexOf(dirs, dir);
+            for (int i = 0; i < num % dialBounds[ix]; i++)
+            {
+                dials[ix].OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
+        // Sorting colors
+        m = Regex.Match(command, @"^\s*sorting\s+colors\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                if (currentGame == 2)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[3].OnInteract();
+        }
+        var colorSwapParameters = command.Split(new[] { ',', ';' });
+        for (int i = 0; i < colorSwapParameters.Length; i++)
+        {
+            m = Regex.Match(colorSwapParameters[i], @"^\s*swap\s+(?<d1>\d)\s+(?<d2>\d)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (m.Success)
+            {
+                if (currentGame != 2)
                 {
-                    yield return null;
-                    for (int i = 0; i < number; i++)
-                    {
-                        colorButton.OnInteract();
-                        yield return null;
-                        colorButton.OnInteractEnded();
-                        yield return new WaitForSeconds(.75f);
-                    }
+                    yield return "sendtochaterror You are not in the \"Sorting colors\" minigame!";
+                    yield break;
                 }
-                else
+                int num1 = int.Parse(m.Groups["d1"].Value);
+                int num2 = int.Parse(m.Groups["d2"].Value);
+                if (num1 < 1 || num2 < 1 || num1 > 6 || num2 > 6 || num1 == num2)
+                {
+                    yield return "sendtochaterror Invalid swap command: " + colorSwapParameters[i];
+                    yield break;
+                }
+                yield return null;
+                sticks[num1 - 1].OnInteract();
+                yield return new WaitForSeconds(0.1f);
+                sticks[num2 - 1].OnInteract();
+                yield return new WaitForSeconds(0.4f);
+                if (stickAnimating)
                     yield break;
             }
         }
-        else if (commandArray[0] == "submit")
+
+        // Balloon
+        m = Regex.Match(command, @"^\s*balloon\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
         {
-            var digits = new[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-            if (!digits.Contains(commandArray[1]))
-                yield break;
-            else
+            yield return null;
+            if (inGame)
             {
-                yield return null;
-                yield return new WaitUntil(() => ((int)bomb.GetTime()) % 10 == Array.IndexOf(digits, commandArray[1]));
-                mainButtons[0].OnInteract();
+                if (currentGame == 3)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text == "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[0].OnInteract();
+        }
+        var balloonParameters = command.Split(' ');
+        if (balloonParameters.Length == 3 && balloonParameters[0] == "inflate" && balloonParameters[1] == "for")
+        {
+            float num;
+            if (!float.TryParse(balloonParameters[2], out num) || num <= 0 || num > 5)
+                yield break;
+            if (currentGame != 3)
+            {
+                yield return "sendtochaterror You are not in the \"Balloon\" minigame!";
+                yield break;
+            }
+            yield return null;
+            balloon.OnInteract();
+            yield return new WaitForSeconds(num);
+            balloon.OnInteractEnded();
+        }
+
+        // Pixel painting
+        m = Regex.Match(command, @"^\s*pixel\s+painting\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                if (currentGame == 4)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text == "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[1].OnInteract();
+        }
+        m = Regex.Match(command, @"^\s*pick\s+color\s+(?<col>[ABC])(?<row>[123456])\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 4)
+            {
+                yield return "sendtochaterror You are not in the \"Pixel painting\" minigame!";
+                yield break;
+            }
+            int col = "abc".IndexOf(m.Groups["col"].Value);
+            int row = "123456".IndexOf(m.Groups["row"].Value);
+            if (col == -1 || row == -1)
+                yield break;
+            yield return null;
+            paintingColorButtons[row * 3 + col].OnInteract();
+            yield break;
+        }
+        m = Regex.Match(command, @"^\s*paint\s+(?<col>[abcdefghijklmnopqrst])(?<row>\d+)(?<dirs>\s+[urdl ]+)?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 4)
+            {
+                yield return "sendtochaterror You are not in the \"Pixel painting\" minigame!";
+                yield break;
+            }
+            int row;
+            if (!int.TryParse(m.Groups["row"].Value, out row) || row < 1 || row > 20)
+                yield break;
+            yield return null;
+            row--;
+            int col = "abcdefghijklmnopqrst".IndexOf(m.Groups["col"].Value);
+            int currentPos = row * 20 + col;
+            pixels[currentPos].OnInteract();
+            yield return null;
+            pixels[currentPos].OnInteractEnded();
+            yield return new WaitForSeconds(0.02f);
+            if (m.Groups["dirs"].Success)
+            {
+                var dirString = m.Groups["dirs"].Value;
+                for (int i = 0; i < dirString.Length; i++)
+                {
+                    int ix = "urdl ".IndexOf(dirString[i]);
+                    if (ix == 0) row--;
+                    if (ix == 1) col++;
+                    if (ix == 2) row++;
+                    if (ix == 3) col--;
+                    if (col < 0 || row < 0 || col > 19 || row > 19) yield break;
+                    currentPos = row * 20 + col;
+                    pixels[currentPos].OnInteract();
+                    yield return null;
+                    pixels[currentPos].OnInteractEnded();
+                    yield return new WaitForSeconds(0.02f);
+                }
             }
         }
-        else
+        m = Regex.Match(command, @"^\s*clear\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 4)
+            {
+                yield return "sendtochaterror You are not in the \"Pixel painting\" minigame!";
+                yield break;
+            }
+            yield return null;
+            clearButton.OnInteract();
             yield break;
+        }
+        m = Regex.Match(command, @"^\s*sus(sy|picious)?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 4)
+            {
+                yield return "sendtochaterror You are not in the \"Pixel painting\" minigame!";
+                yield break;
+            }
+            yield return null;
+            clearButton.OnInteract();
+            yield return new WaitForSeconds(0.02f);
+            var str = "............................0000000............022222220..........02222222220.........01220000000.........0120344...40......0001203444..40.....022012034444440.....012012033333330.....01101220000000......01101222222220......01101122222220......01101122222220......01101112222210......01101111111110.......0001110000110.........01110.01110.........01110.01110.........01110.01110..........000...000....";
+            for (int c = '0'; c <= '4'; c++)
+            {
+                var color = new[] { 17, 1, 0, 10, 9 }[c - '0'];
+                paintingColorButtons[color].OnInteract();
+                yield return new WaitForSeconds(0.02f);
+                var pix = Enumerable.Range(0, 400).Where(i => str[i] == c).ToArray();
+                for (int i = 0; i < pix.Length; i++)
+                {
+                    pixels[pix[i]].OnInteract();
+                    yield return null;
+                    pixels[pix[i]].OnInteractEnded();
+                    yield return new WaitForSeconds(0.02f);
+                }
+            }
+            audio.PlaySoundAtTransform("breadinfrench", transform);
+            yield return "sendtochat STOP STOP STOP FUCK FUCK FUCK GET OUT AAAAAAAAAAAAAAAAAAAAAAAAAA";
+            yield break;
+        }
+
+        // Library
+        m = Regex.Match(command, @"^\s*library\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            if (inGame)
+            {
+                if (currentGame == 5)
+                    yield break;
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            if (mainButtons[0].GetComponentInChildren<TextMesh>().text == "Solve the module")
+            {
+                controlButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            mainButtons[2].OnInteract();
+        }
+        m = Regex.Match(command, @"^\s*(select|exit)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 5)
+            {
+                yield return "sendtochaterror You are not in the \"Library\" minigame!";
+                yield break;
+            }
+            yield return null;
+            bookButton.OnInteract();
+            yield break;
+        }
+        if (command.StartsWith("select "))
+        {
+            if (currentGame != 5)
+            {
+                yield return "sendtochaterror You are not in the \"Library\" minigame!";
+                yield break;
+            }
+            var book = command.Substring(7);
+            var bookTitles = new string[] { "1984", "a christmas carol", "call of cthulhu", "diary of a wimpy kid", "fahrenheit 451", "moby dick", "the bells", "the cask of amontillado", "the ones who walk away from omelas", "the raven" };
+            int ix = Array.IndexOf(bookTitles, book);
+            if (ix == -1)
+                yield break;
+            yield return null;
+            if (bookSelected)
+            {
+                bookButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            while (selectedBook != ix)
+            {
+                bookCycleButtons[0].OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            bookButton.OnInteract();
+            yield break;
+        }
+        m = Regex.Match(command, @"^\s*(?<page>prev(ious)?|next)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (currentGame != 5)
+            {
+                yield return "sendtochaterror You are not in the \"Library\" minigame!";
+                yield break;
+            }
+            yield return null;
+            if (m.Groups["page"].Value[0] == 'p')
+                bookCycleButtons[1].OnInteract();
+            else
+                bookCycleButtons[0].OnInteract();
+            yield break;
+        }
     }
 
     private IEnumerator TwitchHandleForcedSolve()
     {
         if (inGame)
         {
-            yield return null;
             controlButton.OnInteract();
+            yield return new WaitForSeconds(0.1f);
         }
         if (mainButtons[0].GetComponentInChildren<TextMesh>().text != "Solve the module")
         {
-            yield return null;
             controlButton.OnInteract();
+            yield return new WaitForSeconds(0.1f);
         }
         while (((int)bomb.GetTime()) % 10 != solution)
             yield return true;
-        yield return null;
         mainButtons[0].OnInteract();
+    }
+
+    private string GetModuleCode()
+    {
+        Transform closest = null;
+        float closestDistance = float.MaxValue;
+        foreach (Transform children in transform.parent)
+        {
+            var distance = (transform.position - children.position).magnitude;
+            if (children.gameObject.name == "TwitchModule(Clone)" && (closest == null || distance < closestDistance))
+            {
+                closest = children;
+                closestDistance = distance;
+            }
+        }
+        return closest != null ? closest.Find("MultiDeckerUI").Find("IDText").GetComponent<UnityEngine.UI.Text>().text : null;
     }
 }
